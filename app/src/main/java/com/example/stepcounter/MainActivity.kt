@@ -24,8 +24,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.stepcounter.data.HealthConnectStepRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
-
+import com.example.stepcounter.data.DailyGoalRepository
+import com.example.stepcounter.domain.DailyGoalProgress
 
 class MainActivity : ComponentActivity() {
 
@@ -79,26 +79,56 @@ class MainActivity : ComponentActivity() {
 
 
 
+
     private suspend fun logWeeklySteps() {
 
         try {
             val repository = HealthConnectStepRepository(this)
-            val today = LocalDate.now()
 
-            var totalSteps = 0L
+            val history = repository.getLastSevenDays()
 
-            for (daysAgo in 0L..6L) {
+            val goalRepository = DailyGoalRepository(applicationContext)
 
-                val date = today.minusDays(daysAgo)
-                val steps = repository.getStepsForDate(date)
+            val dailyGoal = goalRepository.getDailyGoal()
 
-                totalSteps += steps
+            val todaySteps = history.lastOrNull()?.steps ?: 0L
 
+
+            val goalProgress = DailyGoalProgress(
+                steps = todaySteps,
+                goal = dailyGoal
+            )
+
+            Log.d(
+                "StepCounter",
+                "Daily goal: ${goalProgress.goal}"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Goal completion: ${goalProgress.percentage}%"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Steps remaining: ${goalProgress.remainingSteps}"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Goal reached: ${goalProgress.isCompleted}"
+            )
+
+
+
+            history.forEach { day ->
                 Log.d(
                     "StepCounter",
-                    "Steps on $date: $steps"
+                    "Steps on ${day.date}: ${day.steps}"
                 )
             }
+
+            val totalSteps = history.sumOf { it.steps }
 
             Log.d(
                 "StepCounter",
@@ -113,6 +143,7 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
 
 
 
