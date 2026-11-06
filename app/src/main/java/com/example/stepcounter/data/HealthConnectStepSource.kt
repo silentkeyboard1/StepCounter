@@ -17,19 +17,34 @@ class HealthConnectStepRepository(
     private val client = HealthConnectClient.getOrCreate(context)
 
     override suspend fun getTodaySteps(): Long {
+        return getStepsForDate(LocalDate.now())
+    }
 
-        val startOfDay = LocalDate.now()
-            .atStartOfDay(ZoneId.systemDefault())
+    override suspend fun getStepsForDate(date: LocalDate): Long {
+
+        val zone = ZoneId.systemDefault()
+
+        val startOfDay = date
+            .atStartOfDay(zone)
             .toInstant()
 
-        val now = Instant.now()
+        val endOfDay = date
+            .plusDays(1)
+            .atStartOfDay(zone)
+            .toInstant()
+
+        val endTime = minOf(endOfDay, Instant.now())
+
+        if (!endTime.isAfter(startOfDay)) {
+            return 0L
+        }
 
         val response = client.aggregate(
             AggregateRequest(
                 metrics = setOf(StepsRecord.COUNT_TOTAL),
                 timeRangeFilter = TimeRangeFilter.between(
                     startOfDay,
-                    now
+                    endTime
                 )
             )
         )

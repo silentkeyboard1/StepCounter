@@ -23,6 +23,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.lifecycle.lifecycleScope
 import com.example.stepcounter.data.HealthConnectStepRepository
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 
 
@@ -37,7 +38,7 @@ class MainActivity : ComponentActivity() {
 
         if (stepPermission in grantedPermissions) {
             lifecycleScope.launch {
-                logTodaySteps()
+                logWeeklySteps()
             }
         } else {
             Log.w("StepCounter", "Access not allowed")
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     client.permissionController.getGrantedPermissions()
 
                 if (stepPermission in grantedPermissions) {
-                    logTodaySteps()
+                    logWeeklySteps()
                 } else {
                     permissionLauncher.launch(setOf(stepPermission))
                 }
@@ -76,22 +77,44 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun logTodaySteps() {
+
+
+    private suspend fun logWeeklySteps() {
 
         try {
             val repository = HealthConnectStepRepository(this)
-            val steps = repository.getTodaySteps()
+            val today = LocalDate.now()
 
-            Log.d("StepCounter", "Steps today: $steps")
+            var totalSteps = 0L
+
+            for (daysAgo in 0L..6L) {
+
+                val date = today.minusDays(daysAgo)
+                val steps = repository.getStepsForDate(date)
+
+                totalSteps += steps
+
+                Log.d(
+                    "StepCounter",
+                    "Steps on $date: $steps"
+                )
+            }
+
+            Log.d(
+                "StepCounter",
+                "Steps in last 7 days: $totalSteps"
+            )
 
         } catch (e: Exception) {
             Log.e(
                 "StepCounter",
-                "Steps could not be read",
+                "Failed to read weekly step counts",
                 e
             )
         }
     }
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
