@@ -51,4 +51,28 @@ class HealthConnectStepRepository(
 
         return response[StepsRecord.COUNT_TOTAL] ?: 0L
     }
+
+    override suspend fun getLastSevenDays(): List<DailyStepCount> {
+
+        val today = LocalDate.now()
+
+        val history = mutableListOf<DailyStepCount>()
+
+        for (daysAgo in 6 downTo 0) {
+
+            val date = today.minusDays(daysAgo.toLong())
+
+            val steps = getStepsForDate(date)
+
+            history.add(
+                DailyStepCount(
+                    date = date,
+                    steps = steps
+                )
+            )
+        }
+
+        return history
+    }
+
 }

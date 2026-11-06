@@ -79,26 +79,22 @@ class MainActivity : ComponentActivity() {
 
 
 
+
     private suspend fun logWeeklySteps() {
 
         try {
             val repository = HealthConnectStepRepository(this)
-            val today = LocalDate.now()
 
-            var totalSteps = 0L
+            val history = repository.getLastSevenDays()
 
-            for (daysAgo in 0L..6L) {
-
-                val date = today.minusDays(daysAgo)
-                val steps = repository.getStepsForDate(date)
-
-                totalSteps += steps
-
+            history.forEach { day ->
                 Log.d(
                     "StepCounter",
-                    "Steps on $date: $steps"
+                    "Steps on ${day.date}: ${day.steps}"
                 )
             }
+
+            val totalSteps = history.sumOf { it.steps }
 
             Log.d(
                 "StepCounter",
@@ -113,6 +109,7 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
 
 
 
