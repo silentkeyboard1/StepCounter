@@ -25,7 +25,7 @@ import com.example.stepcounter.data.HealthConnectStepRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import com.example.stepcounter.data.DailyGoalRepository
-
+import com.example.stepcounter.domain.DailyGoalProgress
 
 class MainActivity : ComponentActivity() {
 
@@ -93,9 +93,32 @@ class MainActivity : ComponentActivity() {
 
             val todaySteps = history.lastOrNull()?.steps ?: 0L
 
-            val goalReached = todaySteps >= dailyGoal
-            Log.d("StepCounter", "Daily goal: $dailyGoal")
-            Log.d("StepCounter", "Goal reached: $goalReached")
+
+            val goalProgress = DailyGoalProgress(
+                steps = todaySteps,
+                goal = dailyGoal
+            )
+
+            Log.d(
+                "StepCounter",
+                "Daily goal: ${goalProgress.goal}"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Goal completion: ${goalProgress.percentage}%"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Steps remaining: ${goalProgress.remainingSteps}"
+            )
+
+            Log.d(
+                "StepCounter",
+                "Goal reached: ${goalProgress.isCompleted}"
+            )
+
 
 
             history.forEach { day ->
