@@ -24,7 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.stepcounter.data.HealthConnectStepRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
+import com.example.stepcounter.data.DailyGoalRepository
 
 
 class MainActivity : ComponentActivity() {
@@ -86,6 +86,17 @@ class MainActivity : ComponentActivity() {
             val repository = HealthConnectStepRepository(this)
 
             val history = repository.getLastSevenDays()
+
+            val goalRepository = DailyGoalRepository(applicationContext)
+
+            val dailyGoal = goalRepository.getDailyGoal()
+
+            val todaySteps = history.lastOrNull()?.steps ?: 0L
+
+            val goalReached = todaySteps >= dailyGoal
+            Log.d("StepCounter", "Daily goal: $dailyGoal")
+            Log.d("StepCounter", "Goal reached: $goalReached")
+
 
             history.forEach { day ->
                 Log.d(
