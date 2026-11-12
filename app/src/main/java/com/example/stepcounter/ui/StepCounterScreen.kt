@@ -49,6 +49,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.example.stepcounter.ui.theme.AppFontFamily
+import androidx.compose.foundation.layout.offset
 
 private const val LAST_PAGE = 3
 private const val WEEK_PAGE_COUNT = 4
@@ -131,7 +133,7 @@ fun StepCounterScreen(
             Text(
                 text = "edit goal",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -181,23 +183,23 @@ private fun TodayStepsCard(
             lineHeight = 12.sp
         )
 
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
             Text(
                 text = stepText,
-                modifier = Modifier.weight(
-                    weight = 1f,
-                    fill = false
-                ),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .alignByBaseline(),
                 style = TextStyle(
                     fontSize = stepFontSize,
                     lineHeight = 68.sp,
                     fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = AppFontFamily,
                     letterSpacing = (-2).sp,
                     platformStyle = PlatformTextStyle(
                         includeFontPadding = false
@@ -210,12 +212,13 @@ private fun TodayStepsCard(
 
             Text(
                 text = "/${state.dailyGoal}",
+                modifier = Modifier.alignByBaseline(),
                 color = colors.onSurfaceVariant,
                 fontSize = 20.sp,
-                lineHeight = 23.sp,
-                modifier = Modifier.padding(bottom = 5.dp)
+                lineHeight = 23.sp
             )
         }
+
     }
 }
 

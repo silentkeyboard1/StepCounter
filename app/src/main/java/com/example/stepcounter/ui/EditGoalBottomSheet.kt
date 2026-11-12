@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.example.stepcounter.ui.theme.AppFontFamily
 
 private const val MAX_DAILY_GOAL = 1_000_000
 
@@ -140,6 +141,7 @@ fun EditGoalBottomSheet(
                     Text("Steps per day")
                 },
                 textStyle = TextStyle(
+                    fontFamily = AppFontFamily,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.onSurface

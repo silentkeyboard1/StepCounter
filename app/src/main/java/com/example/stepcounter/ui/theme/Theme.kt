@@ -28,6 +28,7 @@ private val DarkColors = darkColorScheme(
 fun StepCounterTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
+        typography = Typography,
         content = content
     )
 }
