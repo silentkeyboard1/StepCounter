@@ -10,4 +10,9 @@ interface StepRepository {
     suspend fun getStepsForDate(date: LocalDate): Long
 
     suspend fun getLastSevenDays(): List<DailyStepCount>
+
+    suspend fun getWeekSteps(
+        weekStart: LocalDate
+    ): List<DailyStepCount>
+
 }

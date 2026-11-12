@@ -1,0 +1,246 @@
+package com.example.stepcounter.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.stepcounter.data.DailyStepCount
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
+
+private const val LAST_PAGE = 3
+private const val WEEK_PAGE_COUNT = 4
+
+@Composable
+fun StepCounterScreen(
+    state: StepCounterUiState,
+    hasStepPermission: Boolean,
+    onWeekSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val monday = remember(state.today) {
+        state.today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+    val pagerState = rememberPagerState(
+        initialPage = LAST_PAGE,
+        pageCount = { WEEK_PAGE_COUNT }
+    )
+
+    LaunchedEffect(pagerState.settledPage, monday, hasStepPermission) {
+        if (hasStepPermission) {
+            onWeekSelected(monday.minusWeeks((LAST_PAGE - pagerState.settledPage).toLong()))
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 20.dp)
+            .padding(top = 12.dp, bottom = 12.dp)
+    ) {
+        TodayStepsCard(state)
+        Spacer(Modifier.height(14.dp))
+        WeeklyStatsCard(state, monday, pagerState)
+        Spacer(Modifier.weight(1f))
+        Button(
+            onClick = { /* TODO: Add goal editing later. */ },
+            modifier = Modifier.fillMaxWidth().height(62.dp),
+            shape = RoundedCornerShape(11.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.primary,
+                contentColor = Color.White
+            )
+        ) {
+            Text(
+                text = "edit goal",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun TodayStepsCard(state: StepCounterUiState) {
+    val colors = MaterialTheme.colorScheme
+    val stepText = state.todaySteps?.toString() ?: "—"
+    val stepFontSize = when {
+        stepText.length >= 7 -> 43.sp
+        stepText.length == 6 -> 54.sp
+        else -> 66.sp
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(108.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "TODAY’S STEPS",
+            color = colors.onSurface,
+            fontSize = 10.sp,
+            lineHeight = 12.sp
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stepText,
+                modifier = Modifier.weight(1f, fill = false),
+                style = TextStyle(
+                    fontSize = stepFontSize,
+                    lineHeight = 68.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.SansSerif,
+                    letterSpacing = (-2).sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)
+                ),
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            )
+            Text(
+                text = "/${state.dailyGoal}",
+                color = colors.onSurfaceVariant,
+                fontSize = 20.sp,
+                lineHeight = 23.sp,
+                modifier = Modifier.padding(bottom = 5.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyStatsCard(
+    state: StepCounterUiState,
+    currentMonday: LocalDate,
+    pagerState: PagerState
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(225.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .padding(horizontal = 10.dp, vertical = 9.dp)
+    ) {
+        Text(
+            text = "WEEKLY STATS",
+            color = colors.onSurface,
+            fontSize = 10.sp,
+            lineHeight = 12.sp
+        )
+        Spacer(Modifier.height(22.dp))
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val weekStart = currentMonday.minusWeeks((LAST_PAGE - page).toLong())
+            WeekBars(
+                weekStart = weekStart,
+                today = state.today,
+                days = if (state.weekStart == weekStart) state.weekSteps else emptyList(),
+                dailyGoal = state.dailyGoal
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeekBars(
+    weekStart: LocalDate,
+    today: LocalDate,
+    days: List<DailyStepCount>,
+    dailyGoal: Int
+) {
+    val colors = MaterialTheme.colorScheme
+    val trackColor = if (isSystemInDarkTheme()) Color(0xFF212121) else Color(0xFFF0F0F0)
+    val stepCounts = remember(days) { days.associate { it.date to it.steps } }
+    val scale = maxOf(dailyGoal.toLong(), days.maxOfOrNull { it.steps } ?: 0L, 1L)
+
+    Row(modifier = Modifier.fillMaxSize()) {
+        repeat(7) { index ->
+            val date = weekStart.plusDays(index.toLong())
+            val steps = stepCounts[date] ?: 0L
+            val fraction = (steps.toFloat() / scale).coerceIn(0f, 1f)
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .width(23.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(trackColor),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    if (steps > 0L) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height((maxHeight * fraction).coerceAtLeast(3.dp))
+                                .clip(RoundedCornerShape(50))
+                                .background(colors.primary)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = date.dayOfMonth.toString(),
+                    color = if (date == today) colors.primary else colors.onSurface,
+                    fontSize = 15.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}

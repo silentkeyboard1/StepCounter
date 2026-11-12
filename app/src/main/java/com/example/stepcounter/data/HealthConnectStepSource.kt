@@ -75,4 +75,28 @@ class HealthConnectStepRepository(
         return history
     }
 
+    override suspend fun getWeekSteps(
+        weekStart: LocalDate
+    ): List<DailyStepCount> {
+
+        val today = LocalDate.now()
+
+        return (0L..6L).map { offset ->
+
+            val date = weekStart.plusDays(offset)
+
+            val steps = if (date.isAfter(today)) {
+                0L
+            } else {
+                getStepsForDate(date)
+            }
+
+            DailyStepCount(
+                date = date,
+                steps = steps
+            )
+        }
+    }
+
+
 }
