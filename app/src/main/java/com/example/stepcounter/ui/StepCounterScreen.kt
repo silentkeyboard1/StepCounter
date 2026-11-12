@@ -45,6 +45,10 @@ import com.example.stepcounter.data.DailyStepCount
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 
 private const val LAST_PAGE = 3
 private const val WEEK_PAGE_COUNT = 4
@@ -54,13 +58,20 @@ fun StepCounterScreen(
     state: StepCounterUiState,
     hasStepPermission: Boolean,
     onWeekSelected: (LocalDate) -> Unit,
+    onSaveGoal: suspend (Int) -> Boolean,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
 
+    var showGoalSheet by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     val monday = remember(state.today) {
         state.today.with(
-            TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+            TemporalAdjusters.previousOrSame(
+                DayOfWeek.MONDAY
+            )
         )
     }
 
@@ -106,7 +117,7 @@ fun StepCounterScreen(
 
         Button(
             onClick = {
-                // TODO: Implement goal editing.
+                showGoalSheet = true
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -123,6 +134,16 @@ fun StepCounterScreen(
                 fontWeight = FontWeight.ExtraBold
             )
         }
+    }
+
+    if (showGoalSheet) {
+        EditGoalBottomSheet(
+            currentGoal = state.dailyGoal,
+            onDismiss = {
+                showGoalSheet = false
+            },
+            onSaveGoal = onSaveGoal
+        )
     }
 }
 
@@ -236,11 +257,7 @@ private fun WeeklyStatsCard(
                 (LAST_PAGE - page).toLong()
             )
 
-            val days = if (state.weekStart == weekStart) {
-                state.weekSteps
-            } else {
-                emptyList()
-            }
+            val days = state.cachedWeeks[weekStart].orEmpty()
 
             WeekBars(
                 weekStart = weekStart,

@@ -93,7 +93,8 @@ class MainActivity : ComponentActivity() {
                 StepCounterScreen(
                     state = screenState,
                     hasStepPermission = permissionGranted,
-                    onWeekSelected = screenViewModel::selectWeek
+                    onWeekSelected = screenViewModel::selectWeek,
+                    onSaveGoal = screenViewModel::saveDailyGoal
                 )
             }
         }

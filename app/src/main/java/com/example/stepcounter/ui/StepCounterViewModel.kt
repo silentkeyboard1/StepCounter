@@ -1,3 +1,4 @@
+
 package com.example.stepcounter.ui
 
 import android.util.Log
@@ -22,8 +23,7 @@ data class StepCounterUiState(
     val today: LocalDate = LocalDate.now(),
     val todaySteps: Long? = null,
     val dailyGoal: Int = 10_000,
-    val weekStart: LocalDate? = null,
-    val weekSteps: List<DailyStepCount> = emptyList()
+    val cachedWeeks: Map<LocalDate, List<DailyStepCount>> = emptyMap()
 )
 
 class StepCounterViewModel(
@@ -34,56 +34,172 @@ class StepCounterViewModel(
     private val _uiState = MutableStateFlow(StepCounterUiState())
     val uiState: StateFlow<StepCounterUiState> = _uiState.asStateFlow()
 
-    private var selectedWeekStart: LocalDate =
-        LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    private var loadJob: Job? = null
+    private var selectedWeek: LocalDate? = null
+    private var weekLoadJob: Job? = null
+    private var refreshJob: Job? = null
 
     fun selectWeek(weekStart: LocalDate) {
-        if (selectedWeekStart == weekStart && _uiState.value.weekSteps.isNotEmpty()) {
+
+        // Avoid starting the same request twice.
+        if (selectedWeek == weekStart) {
+            if (
+                _uiState.value.cachedWeeks.containsKey(weekStart) ||
+                weekLoadJob?.isActive == true
+            ) {
+                return
+            }
+        }
+
+        selectedWeek = weekStart
+
+        // Stop loading a week that is no longer selected.
+        weekLoadJob?.cancel()
+
+        // Already loaded weeks do not need another request.
+        if (_uiState.value.cachedWeeks.containsKey(weekStart)) {
+            Log.d("StepCounter", "Week loaded from cache: $weekStart")
             return
         }
-        selectedWeekStart = weekStart
-        _uiState.update { it.copy(weekStart = weekStart, weekSteps = emptyList()) }
-        refresh()
+
+        weekLoadJob = viewModelScope.launch {
+
+            try {
+                Log.d("StepCounter", "Loading week: $weekStart")
+
+                val days = stepRepository.getWeekSteps(weekStart)
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        cachedWeeks = currentState.cachedWeeks +
+                                (weekStart to days)
+                    )
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+
+            } catch (e: Exception) {
+                Log.e(
+                    "StepCounter",
+                    "Failed to load week: $weekStart",
+                    e
+                )
+            }
+        }
     }
 
     fun refresh() {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
+
+        refreshJob?.cancel()
+
+        refreshJob = viewModelScope.launch {
+
             try {
                 val today = LocalDate.now()
-                val goal = goalRepository.getDailyGoal()
-                val days = stepRepository.getWeekSteps(selectedWeekStart)
-                val todaysSteps = days.firstOrNull { it.date == today }?.steps
-                    ?: stepRepository.getTodaySteps()
+                val previousDate = _uiState.value.today
 
-                _uiState.update {
-                    it.copy(
+                // Refresh the previously active week at midnight.
+                if (today != previousDate) {
+
+                    val previousWeekStart = previousDate.with(
+                        TemporalAdjusters.previousOrSame(
+                            DayOfWeek.MONDAY
+                        )
+                    )
+
+                    weekLoadJob?.cancel()
+
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            today = today,
+                            todaySteps = null,
+                            cachedWeeks = currentState.cachedWeeks -
+                                    previousWeekStart
+                        )
+                    }
+
+                    selectedWeek?.let { selectWeek(it) }
+                }
+
+                // Refresh only today's steps and the saved goal.
+                val goal = goalRepository.getDailyGoal()
+                val steps = stepRepository.getTodaySteps()
+
+                _uiState.update { currentState ->
+                    currentState.copy(
                         today = today,
-                        todaySteps = todaysSteps,
-                        dailyGoal = goal,
-                        weekStart = selectedWeekStart,
-                        weekSteps = days
+                        todaySteps = steps,
+                        dailyGoal = goal
                     )
                 }
+
             } catch (e: CancellationException) {
                 throw e
+
             } catch (e: Exception) {
-                Log.e("StepCounter", "Failed to load step data", e)
-                _uiState.update { it.copy(todaySteps = null, weekSteps = emptyList()) }
+                Log.e(
+                    "StepCounter",
+                    "Failed to refresh step data",
+                    e
+                )
             }
+        }
+    }
+
+
+    suspend fun saveDailyGoal(newGoal: Int): Boolean {
+
+        if (newGoal !in 1..1_000_000) {
+            return false
+        }
+
+        return try {
+            goalRepository.setDailyGoal(newGoal)
+
+            _uiState.update { currentState ->
+                currentState.copy(
+                    dailyGoal = newGoal
+                )
+            }
+
+            Log.d(
+                "StepCounter",
+                "Daily goal updated: $newGoal"
+            )
+
+            true
+
+        } catch (e: CancellationException) {
+            throw e
+
+        } catch (e: Exception) {
+            Log.e(
+                "StepCounter",
+                "Failed to save daily goal",
+                e
+            )
+
+            false
         }
     }
 
     companion object {
+
         fun factory(
             steps: StepRepository,
             goals: DailyGoalRepository
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return StepCounterViewModel(steps, goals) as T
+        ): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(
+                    modelClass: Class<T>
+                ): T {
+                    return StepCounterViewModel(
+                        steps,
+                        goals
+                    ) as T
+                }
             }
-        }
     }
 }
