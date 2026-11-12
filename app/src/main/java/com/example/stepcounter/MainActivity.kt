@@ -26,12 +26,14 @@ import com.example.stepcounter.ui.StepCounterScreen
 import com.example.stepcounter.ui.StepCounterViewModel
 import com.example.stepcounter.ui.theme.StepCounterTheme
 import kotlinx.coroutines.delay
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
