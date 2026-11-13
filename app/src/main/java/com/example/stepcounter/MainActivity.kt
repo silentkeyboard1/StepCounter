@@ -1,204 +1,104 @@
 package com.example.stepcounter
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.stepcounter.ui.theme.StepCounterTheme
-import android.os.Build
-import android.os.ext.SdkExtensions
-import android.util.Log
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
-import androidx.lifecycle.lifecycleScope
-import com.example.stepcounter.data.HealthConnectStepRepository
-import kotlinx.coroutines.launch
-import java.time.LocalDate
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stepcounter.data.DailyGoalRepository
-import com.example.stepcounter.domain.DailyGoalProgress
+import com.example.stepcounter.data.HealthConnectStepRepository
+import com.example.stepcounter.ui.StepCounterScreen
+import com.example.stepcounter.ui.StepCounterViewModel
+import com.example.stepcounter.ui.theme.StepCounterTheme
+import kotlinx.coroutines.delay
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
+private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
 class MainActivity : ComponentActivity() {
 
-    private val stepPermission =
-        HealthPermission.getReadPermission(StepsRecord::class)
-
-    private val permissionLauncher = registerForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) { grantedPermissions ->
-
-        if (stepPermission in grantedPermissions) {
-            lifecycleScope.launch {
-                logWeeklySteps()
-            }
-        } else {
-            Log.w("StepCounter", "Access not allowed")
-        }
-    }
-
-    private fun checkAndReadSteps() {
-
-        if (HealthConnectClient.getSdkStatus(this) !=
-            HealthConnectClient.SDK_AVAILABLE
-        ) {
-            Log.e("StepCounter", "Health Connect not available")
-            return
-        }
-
-        lifecycleScope.launch {
-            try {
-                val client = HealthConnectClient.getOrCreate(this@MainActivity)
-
-                val grantedPermissions =
-                    client.permissionController.getGrantedPermissions()
-
-                if (stepPermission in grantedPermissions) {
-                    logWeeklySteps()
-                } else {
-                    permissionLauncher.launch(setOf(stepPermission))
-                }
-
-            } catch (e: Exception) {
-                Log.e(
-                    "StepCounter",
-                    "Error while checking permissions",
-                    e
-                )
-            }
-        }
-    }
-
-
-
-
-    private suspend fun logWeeklySteps() {
-
-        try {
-            val repository = HealthConnectStepRepository(this)
-
-            val history = repository.getLastSevenDays()
-
-            val goalRepository = DailyGoalRepository(applicationContext)
-
-            val dailyGoal = goalRepository.getDailyGoal()
-
-            val todaySteps = history.lastOrNull()?.steps ?: 0L
-
-
-            val goalProgress = DailyGoalProgress(
-                steps = todaySteps,
-                goal = dailyGoal
-            )
-
-            Log.d(
-                "StepCounter",
-                "Daily goal: ${goalProgress.goal}"
-            )
-
-            Log.d(
-                "StepCounter",
-                "Goal completion: ${goalProgress.percentage}%"
-            )
-
-            Log.d(
-                "StepCounter",
-                "Steps remaining: ${goalProgress.remainingSteps}"
-            )
-
-            Log.d(
-                "StepCounter",
-                "Goal reached: ${goalProgress.isCompleted}"
-            )
-
-
-
-            history.forEach { day ->
-                Log.d(
-                    "StepCounter",
-                    "Steps on ${day.date}: ${day.steps}"
-                )
-            }
-
-            val totalSteps = history.sumOf { it.steps }
-
-            Log.d(
-                "StepCounter",
-                "Steps in last 7 days: $totalSteps"
-            )
-
-        } catch (e: Exception) {
-            Log.e(
-                "StepCounter",
-                "Failed to read weekly step counts",
-                e
-            )
-        }
-    }
-
-
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
-
-        checkAndReadSteps()
-
-        val androidVersion = Build.VERSION.SDK_INT
-
-        val extensionVersion =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                SdkExtensions.getExtensionVersion(
-                    Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                )
-            } else {
-                0
-            }
-
-        val stepTrackingSupported =
-            androidVersion >= 34 && extensionVersion >= 20
-
-        Log.d("StepCounter", "Android API: $androidVersion")
-        Log.d("StepCounter", "SDK Extension: $extensionVersion")
-        Log.d(
-            "StepCounter",
-            "Step tracking supported: $stepTrackingSupported"
-        )
-
         enableEdgeToEdge()
+
         setContent {
             StepCounterTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Silas",
-                        modifier = Modifier.padding(innerPadding)
+                val appContext = applicationContext
+                val factory = remember(appContext) {
+                    StepCounterViewModel.factory(
+                        steps = HealthConnectStepRepository(appContext),
+                        goals = DailyGoalRepository(appContext)
                     )
                 }
+                val screenViewModel: StepCounterViewModel = viewModel(factory = factory)
+                val screenState by screenViewModel.uiState.collectAsStateWithLifecycle()
+                var permissionGranted by remember { mutableStateOf(false) }
+
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    PermissionController.createRequestPermissionResultContract()
+                ) { grantedPermissions ->
+                    permissionGranted = readStepsPermission in grantedPermissions
+                    if (!permissionGranted) {
+                        Log.w("StepCounter", "Step count permission denied")
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    try {
+                        if (HealthConnectClient.getSdkStatus(appContext) ==
+                            HealthConnectClient.SDK_AVAILABLE
+                        ) {
+                            val client = HealthConnectClient.getOrCreate(appContext)
+                            val grantedPermissions =
+                                client.permissionController.getGrantedPermissions()
+                            if (readStepsPermission in grantedPermissions) {
+                                permissionGranted = true
+                            } else {
+                                permissionLauncher.launch(setOf(readStepsPermission))
+                            }
+                        } else {
+                            Log.e("StepCounter", "Health Connect is unavailable")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("StepCounter", "Permission check failed", e)
+                    }
+                }
+
+                val lifecycleOwner = LocalLifecycleOwner.current
+                LaunchedEffect(permissionGranted, lifecycleOwner) {
+                    if (permissionGranted) {
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                            while (true) {
+                                screenViewModel.refresh()
+                                delay(60_000L)
+                            }
+                        }
+                    }
+                }
+
+                StepCounterScreen(
+                    state = screenState,
+                    hasStepPermission = permissionGranted,
+                    onWeekSelected = screenViewModel::selectWeek,
+                    onSaveGoal = screenViewModel::saveDailyGoal
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    StepCounterTheme {
-        Greeting("Android")
     }
 }

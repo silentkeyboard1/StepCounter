@@ -10,6 +10,9 @@ android {
     }
 
     defaultConfig {
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
         applicationId = "com.example.stepcounter"
         minSdk = 26
         targetSdk = 37
@@ -23,7 +26,6 @@ android {
         release {
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
     }
@@ -36,22 +38,44 @@ android {
     }
 }
 
+
 dependencies {
+
+    // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+
+    // Android Core
     implementation(libs.androidx.core.ktx)
+
+    // Lifecycle and ViewModel
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
+    // Health Connect
     implementation(libs.androidx.connect.client)
+
+    // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Unit Tests
     testImplementation(libs.junit)
+
+    // Android Instrumented Tests
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+
+    // Debug Tools
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Splash Screen
+    implementation(libs.androidx.core.splashscreen)
 }
