@@ -1,10 +1,10 @@
 
-# Gradle und Kotlin
+# Gradle and Kotlin
 .gradle/
 .kotlin/
 build/
 
-# Lokale Konfiguration
+# Local configuration
 local.properties
 
 # Android Studio / IntelliJ
@@ -13,20 +13,20 @@ local.properties
 captures/
 out/
 
-# Native Build-Dateien
+# Native Build-Files
 .externalNativeBuild/
 .cxx/
 
-# Generierte Android-Dateien
+# Generated Android-Files
 *.apk
 *.aab
 output-metadata.json
 
-# Logs und Profiling
+# Logs
 *.log
 *.hprof
 
-# Signierung und sensible Dateien
+# Signatures and sensitive data
 *.jks
 *.keystore
 keystore.properties
@@ -36,6 +36,9 @@ google-services.json
 .env
 .env.*
 
-# Betriebssystem
+# Operating System
 .DS_Store
 Thumbs.db
+
+# R8
+/app/release/mapping.txt
