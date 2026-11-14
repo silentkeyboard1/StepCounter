@@ -93,9 +93,7 @@ fun EditGoalBottomSheet(
         ),
         dragHandle = {
             BottomSheetDefaults.DragHandle(
-                color = colors.onSurfaceVariant.copy(
-                    alpha = 0.4f
-                )
+                color = colors.onSurfaceVariant.copy(alpha = 0.4f)
             )
         }
     ) {
@@ -103,14 +101,9 @@ fun EditGoalBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = 24.dp
-                ),
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
             Text(
                 text = "EDIT DAILY GOAL",
                 fontSize = 12.sp,
@@ -128,10 +121,7 @@ fun EditGoalBottomSheet(
             OutlinedTextField(
                 value = goalInput,
                 onValueChange = { value ->
-                    if (
-                        value.length <= 7 &&
-                        value.all { it.isDigit() }
-                    ) {
+                    if (value.length <= 7 && value.all { it.isDigit() }) {
                         goalInput = value
                         saveFailed = false
                     }
@@ -148,8 +138,7 @@ fun EditGoalBottomSheet(
                 ),
                 singleLine = true,
                 enabled = !isSaving,
-                isError = goalInput.isNotEmpty() &&
-                        !isValidGoal,
+                isError = goalInput.isNotEmpty() && !isValidGoal,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Done
@@ -163,12 +152,10 @@ fun EditGoalBottomSheet(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = colors.primary,
                     focusedLabelColor = colors.primary,
-                    unfocusedBorderColor =
-                        colors.onSurfaceVariant.copy(
-                            alpha = 0.5f
-                        ),
-                    unfocusedLabelColor =
-                        colors.onSurfaceVariant
+                    unfocusedBorderColor = colors.onSurfaceVariant.copy(
+                        alpha = 0.5f
+                    ),
+                    unfocusedLabelColor = colors.onSurfaceVariant
                 )
             )
 
@@ -184,13 +171,19 @@ fun EditGoalBottomSheet(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    12.dp
-                )
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 TextButton(
-                    onClick = onDismiss,
+                    onClick = {
+                        scope.launch {
+                            keyboardController?.hide()
+                            sheetState.hide()
+
+                            if (!sheetState.isVisible) {
+                                onDismiss()
+                            }
+                        }
+                    },
                     enabled = !isSaving,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -234,11 +227,7 @@ fun EditGoalBottomSheet(
                     )
                 ) {
                     Text(
-                        text = if (isSaving) {
-                            "saving..."
-                        } else {
-                            "save goal"
-                        },
+                        text = if (isSaving) "saving..." else "save goal",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
