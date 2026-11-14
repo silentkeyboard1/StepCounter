@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="month_widget_name">Monthly steps</string>
+    <string name="month_widget_best">BEST</string>
+    <string name="month_widget_avg">AVG</string>
+    <string name="month_widget_no_value">—</string>
+    <string name="month_widget_best_description">Best day: %1$s steps</string>
+    <string name="month_widget_avg_description">Daily average: %1$s steps</string>
+    <string name="month_widget_best_missing">Best day: No step data</string>
+    <string name="month_widget_avg_missing">Daily average: No step data</string>
+    <string name="month_widget_steps">%1$s: %2$s steps</string>
+    <string name="month_widget_no_steps">%1$s: No step data</string>
+</resources>

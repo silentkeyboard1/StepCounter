@@ -27,6 +27,9 @@ import com.example.stepcounter.ui.StepCounterViewModel
 import com.example.stepcounter.ui.theme.StepCounterTheme
 import kotlinx.coroutines.delay
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import com.example.stepcounter.widget.MonthlyStepsWidget
+import kotlinx.coroutines.launch
 
 private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
@@ -82,8 +85,12 @@ class MainActivity : ComponentActivity() {
 
                 val lifecycleOwner = LocalLifecycleOwner.current
                 LaunchedEffect(permissionGranted, lifecycleOwner) {
-                    if (permissionGranted) {
-                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        launch {
+                            MonthlyStepsWidget.refresh(appContext)
+                        }
+
+                        if (permissionGranted) {
                             while (true) {
                                 screenViewModel.refresh()
                                 delay(60_000L)
@@ -96,7 +103,17 @@ class MainActivity : ComponentActivity() {
                     state = screenState,
                     hasStepPermission = permissionGranted,
                     onWeekSelected = screenViewModel::selectWeek,
-                    onSaveGoal = screenViewModel::saveDailyGoal
+                    onSaveGoal = { newGoal ->
+                        val saved = screenViewModel.saveDailyGoal(newGoal)
+
+                        if (saved) {
+                            lifecycleOwner.lifecycleScope.launch {
+                                MonthlyStepsWidget.onGoalSaved(appContext)
+                            }
+                        }
+
+                        saved
+                    }
                 )
             }
         }
