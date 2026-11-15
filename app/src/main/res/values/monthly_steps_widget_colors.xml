@@ -2,7 +2,7 @@
 <resources>
     <color name="month_widget_primary">#FDFDFD</color>
     <color name="month_widget_text">#121212</color>
-    <color name="month_widget_empty">#F4F5F7</color>
+    <color name="month_widget_empty">#E2E2E2</color>
     <color name="month_widget_under_30">#283723</color>
     <color name="month_widget_from_30">#1E4D22</color>
     <color name="month_widget_from_50">#25882C</color>
