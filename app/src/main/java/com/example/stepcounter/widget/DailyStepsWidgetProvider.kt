@@ -172,8 +172,15 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
 
             fitText(stepsPaint, steps, availableStepsWidth, baseline, height - baseline)
 
-            canvas.drawText(steps, 0f, baseline, stepsPaint)
-            canvas.drawText(goal, width - goalWidth, baseline, goalPaint)
+            val stepsBounds = android.graphics.Rect()
+            stepsPaint.getTextBounds(steps, 0, steps.length, stepsBounds)
+            canvas.drawText(steps, -stepsBounds.left.toFloat(), baseline, stepsPaint)
+
+            if (goal.isNotEmpty()) {
+                val goalBounds = android.graphics.Rect()
+                goalPaint.getTextBounds(goal, 0, goal.length, goalBounds)
+                canvas.drawText(goal, width.toFloat() - goalBounds.right, baseline, goalPaint)
+            }
 
             return bitmap
         }
