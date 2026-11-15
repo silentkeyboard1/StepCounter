@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="month_widget_primary">#FDFDFD</color>
+    <color name="month_widget_primary">#F9F9F9</color>
     <color name="month_widget_text">#121212</color>
     <color name="month_widget_empty">#E2E2E2</color>
     <color name="month_widget_under_30">#283723</color>

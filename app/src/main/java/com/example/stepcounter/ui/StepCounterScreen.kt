@@ -286,7 +286,7 @@ private fun WeekBars(
     val trackColor = if (isSystemInDarkTheme()) {
         Color(0xFF212121)
     } else {
-        Color(0xFFF0F0F0)
+        Color(0xFFE2E2E2)
     }
 
     val stepCounts = remember(days) {
