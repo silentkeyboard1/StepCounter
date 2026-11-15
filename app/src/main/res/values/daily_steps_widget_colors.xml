@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="daily_widget_progress_track">#F4F5F7</color>
+    <color name="daily_widget_progress_fill">#69B551</color>
+</resources>

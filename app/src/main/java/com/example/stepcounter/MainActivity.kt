@@ -30,6 +30,15 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.example.stepcounter.widget.MonthlyStepsWidget
 import kotlinx.coroutines.launch
+import android.appwidget.AppWidgetManager
+import com.example.stepcounter.widget.DailyStepData
+import com.example.stepcounter.widget.DailyStepSnapshot
+import com.example.stepcounter.widget.DailyStepsWidgetProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
@@ -95,6 +104,44 @@ class MainActivity : ComponentActivity() {
                                 screenViewModel.refresh()
                                 delay(60_000L)
                             }
+                        }
+                    }
+                }
+
+                LaunchedEffect(permissionGranted, lifecycleOwner, screenViewModel) {
+                    if (permissionGranted) {
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            screenViewModel.uiState
+                                .map { state ->
+                                    state.todaySteps?.let { steps ->
+                                        DailyStepData(
+                                            date = state.today,
+                                            steps = steps,
+                                            goal = state.dailyGoal
+                                        )
+                                    }
+                                }
+                                .distinctUntilChanged()
+                                .collect { data ->
+                                    if (data != null) {
+                                        try {
+                                            withContext(Dispatchers.IO) {
+                                                if (DailyStepSnapshot.read(appContext, data.date) != data) {
+                                                    DailyStepSnapshot.write(appContext, data)
+                                                }
+
+                                                val manager = AppWidgetManager.getInstance(appContext)
+                                                val ids = DailyStepsWidgetProvider.ids(appContext, manager)
+
+                                                DailyStepsWidgetProvider.render(appContext, manager, ids)
+                                            }
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            Log.w("DailyStepsWidget", "Could not update the daily widget", e)
+                                        }
+                                    }
+                                }
                         }
                     }
                 }

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">StepCounter</string>
+    <string name="daily_steps_widget_name">Daily progress</string>
 </resources>
