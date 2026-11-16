@@ -1,5 +1,6 @@
 package com.example.stepcounter.widget
 
+import android.animation.ValueAnimator
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -11,7 +12,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.os.Bundle
+import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import android.widget.RemoteViews
 import com.example.stepcounter.MainActivity
@@ -19,9 +23,6 @@ import com.example.stepcounter.R
 import java.time.LocalDate
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
-import android.animation.ValueAnimator
-import android.graphics.Rect
-import android.os.PowerManager
 import kotlinx.coroutines.delay
 
 class DailyStepsWidgetProvider : AppWidgetProvider() {
@@ -94,17 +95,34 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            try {
-                for (frame in 1..7) {
-                    delay(30L)
+            val durationMillis = 480L
+            val frameIntervalMillis = 40L
+            val frameCount = (durationMillis / frameIntervalMillis).toInt()
+            val startedAt = SystemClock.uptimeMillis()
 
-                    val time = frame / 8f
-                    val remaining = 1f - time
-                    val fraction = 1f - remaining * remaining
+            try {
+                for (frame in 1 until frameCount) {
+                    val frameTime = startedAt + frame * frameIntervalMillis
+                    val waitTime = frameTime - SystemClock.uptimeMillis()
+
+                    if (waitTime > 0L) {
+                        delay(waitTime)
+                    }
+
+                    val elapsed = SystemClock.uptimeMillis() - startedAt
+                    if (elapsed >= durationMillis) break
+
+                    val time = elapsed.toFloat() / durationMillis
+                    val fraction = time * time * (3f - 2f * time)
 
                     if (!render(context, manager, ids, previous, updated, fraction)) {
                         return
                     }
+                }
+
+                val remaining = durationMillis - (SystemClock.uptimeMillis() - startedAt)
+                if (remaining > 0L) {
+                    delay(remaining)
                 }
             } finally {
                 render(context, manager, ids, expected = updated)
@@ -244,7 +262,7 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
 
                 for ((index, digit) in steps.withIndex()) {
                     val x = index * digitWidth
-                    val oldDigit = previousDigits?.get(index)
+                    val oldDigit = previousDigits?.getOrNull(index)
 
                     fun drawDigit(value: Char, offsetY: Float) {
                         val text = value.toString()
@@ -252,14 +270,28 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
                         canvas.drawText(text, x - bounds.left, baseline + offsetY, paint)
                     }
 
-                    if (oldDigit != null && oldDigit != digit && fraction < 1f) {
-                        if (oldDigit != ' ') {
-                            drawDigit(oldDigit, -travel * fraction)
-                        }
-                        drawDigit(digit, travel * (1f - fraction))
-                    } else {
+                    if (oldDigit == null || oldDigit == digit || fraction >= 1f) {
                         drawDigit(digit, 0f)
+                        continue
                     }
+
+                    if (oldDigit == ' ') {
+                        drawDigit(digit, travel * (1f - fraction))
+                        continue
+                    }
+
+                    val from = oldDigit.digitToInt()
+                    val to = digit.digitToInt()
+                    val distance = (to - from + 10) % 10
+                    val position = from + distance * fraction
+                    val current = position.toInt()
+                    val offset = (position - current) * travel
+
+                    val currentDigit = ('0'.code + current % 10).toChar()
+                    val nextDigit = ('0'.code + (current + 1) % 10).toChar()
+
+                    drawDigit(currentDigit, -offset)
+                    drawDigit(nextDigit, travel - offset)
                 }
             }
 

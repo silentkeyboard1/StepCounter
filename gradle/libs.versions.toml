@@ -1,5 +1,6 @@
 [versions]
 agp = "9.5.1"
+composeNumberFlowVersion = "0.1.0"
 connectClient = "1.1.0"
 coreKtx = "1.10.1"
 coreSplashscreen = "1.2.0"
@@ -22,6 +23,7 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
+atul-khandekar-compose-number-flow = { module = "io.github.atul-khandekar:compose-number-flow", version.ref = "composeNumberFlowVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

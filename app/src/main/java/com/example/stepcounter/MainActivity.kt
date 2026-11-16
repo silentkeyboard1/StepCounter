@@ -148,6 +148,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+
+
                 StepCounterScreen(
                     state = screenState,
                     hasStepPermission = permissionGranted,
