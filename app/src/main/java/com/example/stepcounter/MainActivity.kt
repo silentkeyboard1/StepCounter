@@ -39,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import com.example.stepcounter.widget.WidgetRefreshWorker
 
 private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
@@ -52,6 +53,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             StepCounterTheme {
                 val appContext = applicationContext
+                LaunchedEffect(appContext) {
+                    WidgetRefreshWorker.schedule(appContext)
+                }
                 val factory = remember(appContext) {
                     StepCounterViewModel.factory(
                         steps = HealthConnectStepRepository(appContext),

@@ -69,6 +69,18 @@ internal object DailyStepSnapshot {
     }
 
     @Synchronized
+    fun writeIfUnchanged(
+        context: Context,
+        previous: DailyStepData?,
+        updated: DailyStepData
+    ) {
+        if (updated.date == LocalDate.now() &&
+            read(context, updated.date) == previous &&
+            previous != updated
+        ) {
+            write(context, updated)
+        }
+    }
     fun clear(context: Context) {
         file(context).delete()
     }
