@@ -1,6 +1,5 @@
 package com.example.stepcounter.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
@@ -67,6 +66,7 @@ import com.example.stepcounter.ui.theme.AppFontFamily
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 private const val LAST_PAGE = 3
@@ -169,6 +169,17 @@ private fun TodayStepsCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val stepText = state.todaySteps?.toString() ?: "—"
+    val hasStepValue = state.todaySteps != null
+
+    var hasStartedStepEntry by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(hasStepValue) {
+        if (hasStepValue) {
+            hasStartedStepEntry = true
+        }
+    }
 
     val stepFontSize = when {
         stepText.length >= 7 -> 43.sp
@@ -216,6 +227,7 @@ private fun TodayStepsCard(
                 RollingStepCount(
                     text = stepText,
                     style = stepNumberStyle,
+                    animateOnEntry = !hasStartedStepEntry,
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .alignByBaseline()
@@ -237,6 +249,7 @@ private fun TodayStepsCard(
 private fun RollingStepCount(
     text: String,
     style: TextStyle,
+    animateOnEntry: Boolean,
     modifier: Modifier = Modifier
 ) {
     if (text.isEmpty() || text.any { it !in '0'..'9' }) {
@@ -277,7 +290,10 @@ private fun RollingStepCount(
         // Keep digit state tied to its place value when the number grows.
         key(text.lastIndex - index) {
             val digit = character.digitToInt()
-            val position = remember { Animatable(digit.toFloat()) }
+            val position = remember {
+                // Position -1 is the empty slot before the first zero.
+                Animatable(if (animateOnEntry) -1f else digit.toFloat())
+            }
 
             LaunchedEffect(digit) {
                 val current = position.value
@@ -309,18 +325,21 @@ private fun RollingStepCount(
             .drawBehind {
                 digitPositions.forEachIndexed { index, position ->
                     val value = position.value
-                    val whole = value.toInt()
+                    val whole = floor(value).toInt()
                     val shift = (value - whole) * size.height
                     val cellLeft = index * cellWidth
-                    val currentGlyph = glyphs[whole % 10]
 
-                    drawText(
-                        currentGlyph,
-                        topLeft = Offset(
-                            x = cellLeft + (cellWidth - currentGlyph.size.width) / 2f,
-                            y = -shift
+                    if (whole >= 0) {
+                        val currentGlyph = glyphs[whole % 10]
+
+                        drawText(
+                            currentGlyph,
+                            topLeft = Offset(
+                                x = cellLeft + (cellWidth - currentGlyph.size.width) / 2f,
+                                y = -shift
+                            )
                         )
-                    )
+                    }
 
                     if (shift > 0f) {
                         val nextGlyph = glyphs[(whole + 1) % 10]
