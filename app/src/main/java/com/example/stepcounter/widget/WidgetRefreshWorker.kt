@@ -86,8 +86,9 @@ class WidgetRefreshWorker(
                 val goal = DailyGoalRepository(context).getDailyGoal()
                 val updated = DailyStepData(date = today, steps = steps, goal = goal)
 
-                DailyStepSnapshot.writeIfUnchanged(context, previous, updated)
-                DailyStepsWidgetProvider.render(context, manager, dailyIds)
+                if (DailyStepSnapshot.writeIfUnchanged(context, previous, updated)) {
+                    DailyStepsWidgetProvider.animateUpdate(context, manager, dailyIds, previous, updated)
+                }
                 Log.d(TAG, "Daily widget refresh completed")
             }
 

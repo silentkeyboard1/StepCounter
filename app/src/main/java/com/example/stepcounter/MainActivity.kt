@@ -129,15 +129,13 @@ class MainActivity : ComponentActivity() {
                                 .collect { data ->
                                     if (data != null) {
                                         try {
-                                            withContext(Dispatchers.IO) {
-                                                if (DailyStepSnapshot.read(appContext, data.date) != data) {
-                                                    DailyStepSnapshot.write(appContext, data)
-                                                }
+                                            val previous = DailyStepSnapshot.read(appContext, data.date)
 
+                                            if (DailyStepSnapshot.writeIfUnchanged(appContext, previous, data)) {
                                                 val manager = AppWidgetManager.getInstance(appContext)
                                                 val ids = DailyStepsWidgetProvider.ids(appContext, manager)
 
-                                                DailyStepsWidgetProvider.render(appContext, manager, ids)
+                                                DailyStepsWidgetProvider.animateUpdate(appContext, manager, ids, previous, data)
                                             }
                                         } catch (e: CancellationException) {
                                             throw e

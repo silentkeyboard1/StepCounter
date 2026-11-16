@@ -73,16 +73,17 @@ internal object DailyStepSnapshot {
         context: Context,
         previous: DailyStepData?,
         updated: DailyStepData
-    ) {
-        if (updated.date == LocalDate.now() &&
-            read(context, updated.date) == previous &&
-            previous != updated
+    ): Boolean {
+        if (
+            updated.date != LocalDate.now() ||
+            previous == updated ||
+            read(context, updated.date) != previous
         ) {
-            write(context, updated)
+            return false
         }
-    }
-    fun clear(context: Context) {
-        file(context).delete()
+
+        write(context, updated)
+        return true
     }
 
     private fun file(context: Context): AtomicFile =

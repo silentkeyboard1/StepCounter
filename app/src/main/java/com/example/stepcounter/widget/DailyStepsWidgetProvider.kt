@@ -19,6 +19,10 @@ import com.example.stepcounter.R
 import java.time.LocalDate
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
+import android.animation.ValueAnimator
+import android.graphics.Rect
+import android.os.PowerManager
+import kotlinx.coroutines.delay
 
 class DailyStepsWidgetProvider : AppWidgetProvider() {
 
@@ -66,17 +70,72 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
                 ComponentName(context, DailyStepsWidgetProvider::class.java)
             )
 
+        internal suspend fun animateUpdate(
+            context: Context,
+            manager: AppWidgetManager,
+            ids: IntArray,
+            previous: DailyStepData?,
+            updated: DailyStepData
+        ) {
+            if (ids.isEmpty()) return
+
+            val screenIsOn =
+                context.getSystemService(PowerManager::class.java)?.isInteractive == true
+
+            if (
+                previous == null ||
+                previous.date != updated.date ||
+                previous.goal != updated.goal ||
+                previous.steps >= updated.steps ||
+                !screenIsOn ||
+                !ValueAnimator.areAnimatorsEnabled()
+            ) {
+                render(context, manager, ids, expected = updated)
+                return
+            }
+
+            try {
+                for (frame in 1..7) {
+                    delay(30L)
+
+                    val time = frame / 8f
+                    val remaining = 1f - time
+                    val fraction = 1f - remaining * remaining
+
+                    if (!render(context, manager, ids, previous, updated, fraction)) {
+                        return
+                    }
+                }
+            } finally {
+                render(context, manager, ids, expected = updated)
+            }
+        }
+
         @Synchronized
         internal fun render(
             context: Context,
             manager: AppWidgetManager,
-            ids: IntArray
-        ) {
-            if (ids.isEmpty()) return
+            ids: IntArray,
+            previous: DailyStepData? = null,
+            expected: DailyStepData? = null,
+            fraction: Float = 1f
+        ): Boolean {
+            if (ids.isEmpty()) return false
 
             val data = DailyStepSnapshot.read(context, LocalDate.now())
+
+            if (expected != null && data != expected) return false
+
             val stepsText = data?.steps?.toString() ?: "—"
             val goalText = data?.goal?.let { "/$it" }.orEmpty()
+            val targetProgress = data?.progress ?: 0
+
+            val progress = if (previous != null) {
+                val change = targetProgress - previous.progress
+                (previous.progress + change * fraction.toDouble()).roundToInt()
+            } else {
+                targetProgress
+            }
 
             val openApp = PendingIntent.getActivity(
                 context,
@@ -89,10 +148,12 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
 
             for (id in ids) {
                 val numbers = drawNumbers(
-                    context,
-                    manager.getAppWidgetOptions(id),
-                    stepsText,
-                    goalText
+                    context = context,
+                    options = manager.getAppWidgetOptions(id),
+                    steps = stepsText,
+                    goal = goalText,
+                    previousSteps = previous?.steps?.toString(),
+                    fraction = fraction
                 )
 
                 val views = RemoteViews(context.packageName, R.layout.daily_steps_widget).apply {
@@ -109,20 +170,24 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
                     setProgressBar(
                         R.id.daily_widget_progress,
                         data?.goal ?: 1,
-                        data?.progress ?: 0,
+                        progress,
                         false
                     )
                 }
 
                 manager.updateAppWidget(id, views)
             }
+
+            return true
         }
 
         private fun drawNumbers(
             context: Context,
             options: Bundle,
             steps: String,
-            goal: String
+            goal: String,
+            previousSteps: String?,
+            fraction: Float
         ): Bitmap {
             val landscape =
                 context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -164,21 +229,67 @@ class DailyStepsWidgetProvider : AppWidgetProvider() {
                 textSize = height * 0.32f
             }
 
+            fun drawStepDigits(
+                canvas: Canvas,
+                paint: Paint,
+                steps: String,
+                previousSteps: String?,
+                baseline: Float,
+                fraction: Float
+            ) {
+                val digitWidth = ('0'..'9').maxOf { paint.measureText(it.toString()) }
+                val previousDigits = previousSteps?.padStart(steps.length)
+                val travel = canvas.height.toFloat()
+                val bounds = Rect()
+
+                for ((index, digit) in steps.withIndex()) {
+                    val x = index * digitWidth
+                    val oldDigit = previousDigits?.get(index)
+
+                    fun drawDigit(value: Char, offsetY: Float) {
+                        val text = value.toString()
+                        paint.getTextBounds(text, 0, text.length, bounds)
+                        canvas.drawText(text, x - bounds.left, baseline + offsetY, paint)
+                    }
+
+                    if (oldDigit != null && oldDigit != digit && fraction < 1f) {
+                        if (oldDigit != ' ') {
+                            drawDigit(oldDigit, -travel * fraction)
+                        }
+                        drawDigit(digit, travel * (1f - fraction))
+                    } else {
+                        drawDigit(digit, 0f)
+                    }
+                }
+            }
+
             fitText(goalPaint, goal, width * 0.4f, baseline, height - baseline)
 
-            val goalWidth = goalPaint.measureText(goal)
+            val goalBounds = Rect()
+            goalPaint.getTextBounds(goal, 0, goal.length, goalBounds)
+
             val gap = if (goal.isEmpty()) 0f else 8f * density
-            val availableStepsWidth = (width - goalWidth - gap).coerceAtLeast(1f)
+            val availableStepsWidth = (width - goalBounds.width() - gap).coerceAtLeast(1f)
 
-            fitText(stepsPaint, steps, availableStepsWidth, baseline, height - baseline)
+            val isStepCount = steps.all { it in '0'..'9' }
+            val widestDigit = ('0'..'9').maxBy { stepsPaint.measureText(it.toString()) }
+            val widthSample = if (isStepCount) {
+                widestDigit.toString().repeat(steps.length)
+            } else {
+                steps
+            }
 
-            val stepsBounds = android.graphics.Rect()
-            stepsPaint.getTextBounds(steps, 0, steps.length, stepsBounds)
-            canvas.drawText(steps, -stepsBounds.left.toFloat(), baseline, stepsPaint)
+            fitText(stepsPaint, widthSample, availableStepsWidth, baseline, height - baseline)
+
+            if (isStepCount) {
+                drawStepDigits(canvas, stepsPaint, steps, previousSteps, baseline, fraction)
+            } else {
+                val bounds = Rect()
+                stepsPaint.getTextBounds(steps, 0, steps.length, bounds)
+                canvas.drawText(steps, -bounds.left.toFloat(), baseline, stepsPaint)
+            }
 
             if (goal.isNotEmpty()) {
-                val goalBounds = android.graphics.Rect()
-                goalPaint.getTextBounds(goal, 0, goal.length, goalBounds)
                 canvas.drawText(goal, width.toFloat() - goalBounds.right, baseline, goalPaint)
             }
 
