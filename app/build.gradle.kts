@@ -59,6 +59,7 @@ dependencies {
 
     // Health Connect
     implementation(libs.androidx.connect.client)
+    implementation(libs.androidx.work.runtime)
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
@@ -78,4 +79,5 @@ dependencies {
 
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
+
 }

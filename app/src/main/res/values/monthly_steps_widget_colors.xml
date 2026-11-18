@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="month_widget_primary">#F9F9F9</color>
+    <color name="month_widget_text">#121212</color>
+    <color name="month_widget_empty">#E2E2E2</color>
+    <color name="month_widget_under_30">#283723</color>
+    <color name="month_widget_from_30">#1E4D22</color>
+    <color name="month_widget_from_50">#25882C</color>
+    <color name="month_widget_from_80">#49B742</color>
+    <color name="month_widget_goal">#55EB45</color>
+</resources>

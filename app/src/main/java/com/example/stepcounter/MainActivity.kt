@@ -27,6 +27,19 @@ import com.example.stepcounter.ui.StepCounterViewModel
 import com.example.stepcounter.ui.theme.StepCounterTheme
 import kotlinx.coroutines.delay
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import com.example.stepcounter.widget.MonthlyStepsWidget
+import kotlinx.coroutines.launch
+import android.appwidget.AppWidgetManager
+import com.example.stepcounter.widget.DailyStepData
+import com.example.stepcounter.widget.DailyStepSnapshot
+import com.example.stepcounter.widget.DailyStepsWidgetProvider
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import com.example.stepcounter.widget.WidgetRefreshWorker
 
 private val readStepsPermission = HealthPermission.getReadPermission(StepsRecord::class)
 
@@ -40,6 +53,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             StepCounterTheme {
                 val appContext = applicationContext
+                LaunchedEffect(appContext) {
+                    WidgetRefreshWorker.schedule(appContext)
+                }
                 val factory = remember(appContext) {
                     StepCounterViewModel.factory(
                         steps = HealthConnectStepRepository(appContext),
@@ -82,8 +98,12 @@ class MainActivity : ComponentActivity() {
 
                 val lifecycleOwner = LocalLifecycleOwner.current
                 LaunchedEffect(permissionGranted, lifecycleOwner) {
-                    if (permissionGranted) {
-                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        launch {
+                            MonthlyStepsWidget.refresh(appContext)
+                        }
+
+                        if (permissionGranted) {
                             while (true) {
                                 screenViewModel.refresh()
                                 delay(60_000L)
@@ -92,11 +112,59 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                LaunchedEffect(permissionGranted, lifecycleOwner, screenViewModel) {
+                    if (permissionGranted) {
+                        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                            screenViewModel.uiState
+                                .map { state ->
+                                    state.todaySteps?.let { steps ->
+                                        DailyStepData(
+                                            date = state.today,
+                                            steps = steps,
+                                            goal = state.dailyGoal
+                                        )
+                                    }
+                                }
+                                .distinctUntilChanged()
+                                .collect { data ->
+                                    if (data != null) {
+                                        try {
+                                            val previous = DailyStepSnapshot.read(appContext, data.date)
+
+                                            if (DailyStepSnapshot.writeIfUnchanged(appContext, previous, data)) {
+                                                val manager = AppWidgetManager.getInstance(appContext)
+                                                val ids = DailyStepsWidgetProvider.ids(appContext, manager)
+
+                                                DailyStepsWidgetProvider.animateUpdate(appContext, manager, ids, previous, data)
+                                            }
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            Log.w("DailyStepsWidget", "Could not update the daily widget", e)
+                                        }
+                                    }
+                                }
+                        }
+                    }
+                }
+
+
+
                 StepCounterScreen(
                     state = screenState,
                     hasStepPermission = permissionGranted,
                     onWeekSelected = screenViewModel::selectWeek,
-                    onSaveGoal = screenViewModel::saveDailyGoal
+                    onSaveGoal = { newGoal ->
+                        val saved = screenViewModel.saveDailyGoal(newGoal)
+
+                        if (saved) {
+                            lifecycleOwner.lifecycleScope.launch {
+                                MonthlyStepsWidget.onGoalSaved(appContext)
+                            }
+                        }
+
+                        saved
+                    }
                 )
             }
         }
